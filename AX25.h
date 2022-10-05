@@ -11,6 +11,7 @@ typedef struct AX25_Message {
 	char destination[7];	/*APRS destination*/
 	char source[7];		/*callsign and ssid*/
 	char digipeaters[56];	/*APRS digipeaters*/
+	int checked;
 }AX25_message;
 
 typedef struct AX25_ADDR
@@ -34,8 +35,8 @@ typedef struct AX25_Frame
 int fcs(AX25_header hed, char *info);
 
 char *callsign_encode(char *callsign_str);
+AX25_address encoded_addresses(AX25_message msg);
 AX25_header header(AX25_address addr);
-int fcs(AX25_header hed, char *info);
 AX25_frame dump_AX25_frame(AX25_header hed, char *info);
-
+AX25_message decodec(char *data, int length, char *info);
 #endif
