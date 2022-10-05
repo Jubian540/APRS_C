@@ -1,26 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#define CONTROL_FIELD	0x03
-#define PROTOCOL_ID	0xf0
-#define	FLAGE		0x73
-
-#define	DEBUG		0x1
-
-typedef struct AX25_Message {
-	char destination[10];	/*APRS destination*/
-	char source[10];		/*callsign and ssid*/
-	char digipeaters[255];	/*APRS digipeaters*/
-	char info[255];		/*APRS message*/
-}AX25_message;
-
-typedef struct AX25_ADDR
-{
-	char *data;
-	int length;
-}AX25_address;
-
+#include "AX25.h"
 
 /*
  * Function name	:callsign_encode
@@ -139,15 +120,129 @@ AX25_address encoded_addresses(AX25_message msg)
 	return res;
 }
 
-int main(int argc, char **argv){
-	AX25_message msg;
-	strcpy(msg.destination, "APRS");
-	strcpy(msg.source, "AB252-2");
-	strcpy(msg.digipeaters, "WIDE1-1,WIDE2-1,WIDE3-1");
-	AX25_address addr = encoded_addresses(msg);
+/*
+ * Function name	:header
+ * Description		:Encode header of AX25 format 
+ * Parameter
+ * @addr			AX25 address
+ */
+AX25_header header(AX25_address addr)
+{
+	AX25_header res;
+	res.data = (char*)malloc(addr.length + 2);
+	if (res.data == NULL) {
+		fprintf(stderr, "out of memory!\n");
+		res.length = 0;
+		return res;
+	}
 
-	for (int i = 0; i < addr.length; i++) {
-		printf("%c", addr.data[i]);
+	memcpy(res.data, addr.data, addr.length);
+
+	res.length = addr.length + 2;
+	res.data[addr.length] = CONTROL_FIELD;
+	res.data[addr.length + 1] = PROTOCOL_ID;
+	return res;
+}
+
+int fcs(AX25_header hed, char *info)
+{
+	int res_fcs = 0xffff;
+	int check;
+
+	for (int i = 0; i < hed.length; i++) {
+		for(int j = 0; j < 8; j++) {
+			short bit;
+			if(hed.data[i]&(1<<j)) bit = 1;
+			else bit = 0;
+
+			check = (res_fcs & 0x1 == 1);
+			res_fcs >>= 1;
+			if (check != bit) res_fcs ^= 0x8408;
+		}
+	}
+
+	for (int i = 0; i < strlen(info); i++) {
+		for(int j = 0; j < 8; j++) {
+			short bit;
+			if(info[i]&(1<<j)) bit = 1;
+			else bit = 0;
+
+			check = (res_fcs & 0x1 == 1);
+			res_fcs >>= 1;
+			if (check != bit) res_fcs ^= 0x8408;
+		}
+	}
+
+	return res_fcs;
+}
+
+/*
+ * Function name	:dump_AX25_frame
+ * Description		:dump AX25 frame of APRS 
+ * Parameter
+ * @hed				AX25 header
+ * @ifnot			APRS message
+ */
+AX25_frame dump_AX25_frame(AX25_header hed, char *info)
+{
+	AX25_frame res;
+	int info_len = strlen(info);
+	res.data = malloc(hed.length + 4 + info_len);
+	if (res.data == NULL) {
+		fprintf(stderr, "out of memory!\n");
+		res.length = 0;
+		return res;
+	}
+	res.length = hed.length + 4 + info_len;
+	memset(res.data, 0, res.length);
+	res.data[0] = FLAGE;
+	
+	memcpy(res.data + 1, hed.data, hed.length);
+	memcpy(res.data + 1 + hed.length, info, info_len);
+
+	int sfcs = fcs(hed, info);
+	printf("fcs: %d\n", sfcs);
+	res.data[hed.length + info_len + 1] = ~(sfcs & 0xff);
+	res.data[hed.length + info_len + 2] = ~((sfcs>>8) & 0xff);
+	res.data[hed.length + info_len + 3] = FLAGE;
+	return res;
+}
+
+/*
+* APRS协议封装，先要封装成AX25格式，校验包含在AX25包里面
+* AX25封包 FLAGE + destination + source + digipeaters + CONTROL_FIELD + PROTOCOL_ID + APRS消息 + 校验 + FLAGE
+*/
+int main(int argc, char **argv){
+	FILE *fp;
+	AX25_message msg;
+	strcpy(msg.destination, "APRS");			/*这里是七个字符的描述，显示在地图上的名称*/
+	strcpy(msg.source, "BA6QH-2");				/*呼号-ssid ssid决定了站点类型，站台，汽车，船舶，气象站之类的，详细对应的数字参考手册*/
+	strcpy(msg.digipeaters, "WIDE1-1,WIDE2-1");	/*这里是填8位呼号用的，上一个标准呼号有填的话会被覆盖，详细看手册*/
+	AX25_address addr = encoded_addresses(msg);	
+	AX25_header hea = header(addr);
+	AX25_frame frame = dump_AX25_frame(hea, "!2453.48N/10251.05E"); /*第二个参数包含经纬度信息，还可以包含更多的信息，气压，风向之类的，手册里有说明*/
+
+	fp = fopen("ax25.out", "w");
+	if (fp == NULL) {
+		fprintf(stderr, "open ax25.out failed!\n");
+		return -1;
+	}
+
+	fwrite(frame.data, 1, frame.length, fp);
+	fclose(fp);
+
+	for (int i = 0; i < frame.length; i++) {
+		printf("%c", frame.data[i]);
+	}
+	printf("\n");
+
+	for (int i = 0; i < frame.length; i++) {
+		for(int j = 0; j < 8; j++) {
+			char c;
+			if(frame.data[i]&(1<<j)) c = '1';
+			else c = '0';
+			printf("%c", c);
+		}
 	}
 	printf("\n");
 	return 0;

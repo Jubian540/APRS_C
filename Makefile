@@ -1,4 +1,4 @@
-AX25: AX25.c
+AX25: AX25.c AX25.h
 	gcc AX25.c -o AX25
 
 all: AX25
