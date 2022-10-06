@@ -16,5 +16,5 @@ AX25_encodec: AX25.o AX25_encodec.o
 	gcc AX25.o AX25_encodec.o -o AX25_encodec
 
 clean:
-	rm -rf AX25 AX25_decodec
+	rm -rf AX25 AX25_decodec AX25_encodec
 	rm -rf *.o
