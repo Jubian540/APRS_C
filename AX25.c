@@ -253,7 +253,8 @@ AX25_message decodec(char *data, int length, char *info)
 
 	//check fcs
 	int sfcs = fcs(hed, info);
-	if (((~(sfcs&0xff)&0xff) == data[length - 2]) && ((~((sfcs>>8)&0xff)&0xff) == data[length - 1])) res.checked = 1;
+	printf(" fcs[0]: 0x%x  fcs[1]: 0x%x\ncfcs[0]: 0x%x cfcs[1]: 0x%x\n", data[length - 2]&0xff, data[length - 1]&0xff, (~(sfcs&0xff)&0xff), (~((sfcs>>8)&0xff)&0xff));
+	if (((~(sfcs&0xff)&0xff) == (data[length - 2]&0xff)) && ((~((sfcs>>8)&0xff)&0xff) == (data[length - 1]&0xff))) res.checked = 1;
 	else res.checked = 0;
 
     return res;
