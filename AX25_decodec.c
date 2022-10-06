@@ -28,12 +28,15 @@ int main(int argc, char **argv)
     }
 
     if (end > start) {
+        printf("decodecing %d byte(s)....\n", end - start);
         memcpy(buffer, file_buffer + start, end - start);
         AX25_message res = decodec(buffer, end - start, info);
         if (res.checked) {
             printf("callsign ");
             for (int i = 0; i < 7; i++) printf("%c", res.source[i]);
             printf(":%s\n", info);
+        } else {
+            printf("check error!\n");
         }
     } else {
         fprintf(stderr, "format error!\n");
