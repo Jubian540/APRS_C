@@ -5,7 +5,7 @@
 #define PROTOCOL_ID	0xf0
 #define	FLAGE		0x7e
 
-#define	DEBUG		0x0
+#define	DEBUG		0x1
 
 typedef struct AX25_Message {
 	char destination[7];	/*APRS destination*/
@@ -32,7 +32,14 @@ typedef struct AX25_Frame
 	int length;
 }AX25_frame;
 
+typedef struct Nrzi_context
+{
+	char *data;
+	int length;
+}nrzi_context;
+
 int fcs(AX25_header hed, char *info);
+nrzi_context* nrzi_encode(char *nrzi, int length);
 
 char *callsign_encode(char *callsign_str);
 AX25_address encoded_addresses(AX25_message msg);

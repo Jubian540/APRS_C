@@ -259,3 +259,56 @@ AX25_message decodec(char *data, int length, char *info)
 
     return res;
 }
+
+nrzi_context* nrzi_encode(char *data, int length) {
+	nrzi_context *res;
+	int last_bit = 0;
+	char mask[] = {0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80};
+
+	res = malloc(sizeof(nrzi_context));
+	if (res == NULL) {
+		fprintf(stderr, "out of memory!\n");
+		return (nrzi_context*)-1;
+	}
+
+	res->data = malloc(length);
+	if (res->data == NULL) {
+		fprintf(stderr, "out of memory!\n");
+		return (nrzi_context*)-1;
+	}
+	res->length = length;
+
+	res->data[0] = 1;
+
+	//printf("test: ");
+	for (int i = 0; i < length; i++) {
+		for(int j = 0; j < 8; j++) {
+			if (data[i]&mask[j]) {
+				//printf("n");
+				if (last_bit) {
+					//printf("1");
+					res->data[i] |= mask[j];
+				} else {
+					//printf("0");
+					res->data[i] &= ~mask[j];
+				}
+			} else {
+				//printf("t");
+				if (last_bit) {
+					//printf("0");
+					res->data[i] &= ~mask[j];
+				} else {
+					//printf("1");
+					res->data[i] |= mask[j];
+				}
+			}
+			last_bit = (res->data[i]&mask[j])?1:0;
+		}
+
+		res->data[i] = ~res->data[i];
+	}
+
+	//printf("\n");
+
+	return res;
+}
